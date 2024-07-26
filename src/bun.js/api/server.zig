@@ -4378,25 +4378,21 @@ pub const ServerWebSocket = struct {
             );
         }
 
-        {
-            var string_slice = message_value.toSlice(globalThis, bun.default_allocator);
-            defer string_slice.deinit();
+        var string_slice = message_value.toSlice(globalThis, bun.default_allocator);
+        defer string_slice.deinit();
 
-            const buffer = string_slice.slice();
+        const buffer = string_slice.slice();
 
-            const result = if (!publish_to_self)
-                this.websocket().publish(topic_slice.slice(), buffer, .text, compress)
-            else
-                uws.AnyWebSocket.publishWithOptions(ssl, app, topic_slice.slice(), buffer, .text, compress);
+        const result = if (!publish_to_self)
+            this.websocket().publish(topic_slice.slice(), buffer, .text, compress)
+        else
+            uws.AnyWebSocket.publishWithOptions(ssl, app, topic_slice.slice(), buffer, .text, compress);
 
-            return JSValue.jsNumber(
-                // if 0, return 0
-                // else return number of bytes sent
-                if (result) @as(i32, @intCast(@as(u31, @truncate(buffer.len)))) else @as(i32, 0),
-            );
-        }
-
-        return .zero;
+        return JSValue.jsNumber(
+            // if 0, return 0
+            // else return number of bytes sent
+            if (result) @as(i32, @intCast(@as(u31, @truncate(buffer.len)))) else @as(i32, 0),
+        );
     }
 
     pub fn publishText(
@@ -4701,28 +4697,24 @@ pub const ServerWebSocket = struct {
             }
         }
 
-        {
-            var string_slice = message_value.toSlice(globalThis, bun.default_allocator);
-            defer string_slice.deinit();
+        var string_slice = message_value.toSlice(globalThis, bun.default_allocator);
+        defer string_slice.deinit();
 
-            const buffer = string_slice.slice();
-            switch (this.websocket().send(buffer, .text, compress, true)) {
-                .backpressure => {
-                    log("send() backpressure ({d} bytes string)", .{buffer.len});
-                    return JSValue.jsNumber(-1);
-                },
-                .success => {
-                    log("send() success ({d} bytes string)", .{buffer.len});
-                    return JSValue.jsNumber(buffer.len);
-                },
-                .dropped => {
-                    log("send() dropped ({d} bytes string)", .{buffer.len});
-                    return JSValue.jsNumber(0);
-                },
-            }
+        const buffer = string_slice.slice();
+        switch (this.websocket().send(buffer, .text, compress, true)) {
+            .backpressure => {
+                log("send() backpressure ({d} bytes string)", .{buffer.len});
+                return JSValue.jsNumber(-1);
+            },
+            .success => {
+                log("send() success ({d} bytes string)", .{buffer.len});
+                return JSValue.jsNumber(buffer.len);
+            },
+            .dropped => {
+                log("send() dropped ({d} bytes string)", .{buffer.len});
+                return JSValue.jsNumber(0);
+            },
         }
-
-        return .zero;
     }
 
     pub fn sendText(
@@ -5351,20 +5343,15 @@ pub fn NewServer(comptime NamespaceType: type, comptime ssl_enabled_: bool, comp
                     @as(i32, @intFromBool(uws.AnyWebSocket.publishWithOptions(ssl_enabled, app, topic_slice.slice(), buffer.slice(), .binary, compress))) * @as(i32, @intCast(@as(u31, @truncate(buffer.len)))),
                 );
             }
+            var string_slice = message_value.toSlice(globalThis, bun.default_allocator);
+            defer string_slice.deinit();
 
-            {
-                var string_slice = message_value.toSlice(globalThis, bun.default_allocator);
-                defer string_slice.deinit();
-
-                const buffer = string_slice.slice();
-                return JSValue.jsNumber(
-                    // if 0, return 0
-                    // else return number of bytes sent
-                    @as(i32, @intFromBool(uws.AnyWebSocket.publishWithOptions(ssl_enabled, app, topic_slice.slice(), buffer, .text, compress))) * @as(i32, @intCast(@as(u31, @truncate(buffer.len)))),
-                );
-            }
-
-            return .zero;
+            const buffer = string_slice.slice();
+            return JSValue.jsNumber(
+                // if 0, return 0
+                // else return number of bytes sent
+                @as(i32, @intFromBool(uws.AnyWebSocket.publishWithOptions(ssl_enabled, app, topic_slice.slice(), buffer, .text, compress))) * @as(i32, @intCast(@as(u31, @truncate(buffer.len)))),
+            );
         }
 
         pub fn onUpgrade(

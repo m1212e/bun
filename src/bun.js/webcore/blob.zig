@@ -451,42 +451,36 @@ pub const Blob = struct {
 
                 break :bytes Blob.new(blob);
             },
-            .file => file: {
-                const pathlike_tag = try reader.readEnum(JSC.Node.PathOrFileDescriptor.SerializeTag, .little);
+            .file => switch (try reader.readEnum(JSC.Node.PathOrFileDescriptor.SerializeTag, .little)) {
+                .fd => fd: {
+                    const fd = try bun.FileDescriptor.readFrom(reader, .little);
 
-                switch (pathlike_tag) {
-                    .fd => {
-                        const fd = try bun.FileDescriptor.readFrom(reader, .little);
+                    var path_or_fd = JSC.Node.PathOrFileDescriptor{
+                        .fd = fd,
+                    };
+                    const blob = Blob.new(Blob.findOrCreateFileFromPath(
+                        &path_or_fd,
+                        globalThis,
+                    ));
 
-                        var path_or_fd = JSC.Node.PathOrFileDescriptor{
-                            .fd = fd,
-                        };
-                        const blob = Blob.new(Blob.findOrCreateFileFromPath(
-                            &path_or_fd,
-                            globalThis,
-                        ));
+                    break :fd blob;
+                },
+                .path => path: {
+                    const path_len = try reader.readInt(u32, .little);
 
-                        break :file blob;
-                    },
-                    .path => {
-                        const path_len = try reader.readInt(u32, .little);
+                    const path = try readSlice(reader, path_len, default_allocator);
+                    var dest = JSC.Node.PathOrFileDescriptor{
+                        .path = .{
+                            .string = bun.PathString.init(path),
+                        },
+                    };
+                    const blob = Blob.new(Blob.findOrCreateFileFromPath(
+                        &dest,
+                        globalThis,
+                    ));
 
-                        const path = try readSlice(reader, path_len, default_allocator);
-                        var dest = JSC.Node.PathOrFileDescriptor{
-                            .path = .{
-                                .string = bun.PathString.init(path),
-                            },
-                        };
-                        const blob = Blob.new(Blob.findOrCreateFileFromPath(
-                            &dest,
-                            globalThis,
-                        ));
-
-                        break :file blob;
-                    },
-                }
-
-                return .zero;
+                    break :path blob;
+                },
             },
             .empty => Blob.new(Blob.initEmpty(globalThis)),
         };
